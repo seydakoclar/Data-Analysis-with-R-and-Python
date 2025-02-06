@@ -1,0 +1,371 @@
+---
+title: "Assignment 1"
+output: html_document
+date: "2023-08-30"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment 1
+
+```{r source}
+source('Koclar_Seyda_assignment_1.R')
+```
+
+### Attachment of the Packages
+
+For this assignment to be run without errors, following packages need to be installed:
+
+-   sqldf
+
+-   dplyr
+
+-   data.table
+
+Then these packages is attached with the following code:
+
+```{r libraries}
+library(proto)
+library(gsubfn)
+library(RSQLite)
+library(sqldf)
+library(dplyr)
+library(data.table)
+library(compare)
+```
+
+### Reading the Data
+
+To be able to read the data, the following code should be run with the corrected version of the path to the folder where data is in.
+
+```{r data}
+options(stringsAsFactors=FALSE)
+Posts <- read.csv("Posts.csv.gz")
+Badges <- read.csv("Badges.csv.gz")
+Comments <- read.csv("Comments.csv.gz")
+Votes <- read.csv("Votes.csv.gz")
+Users <- read.csv("Users.csv.gz")
+```
+
+### Results, Measurement of Execution Times and Queries Interpretation
+
+In the report each task is presented in its section. First, the interpretation of the SQL query given in the task is explained, meaning that what this SQL query gives as a result is explained verbally. Then the result of the query is shown with the help if sqldf function to make user observe the resulting table after executing the query. After that the equivalence of the results are compared. At last, the measurement of execution times of each function is presented to see which of the functions is more efficient.
+
+For the comparison of the equivalence of the created objects by the functions compare packages was loaded in the library section.
+
+#### Task 1
+
+In this task the query gives a table of two columns named: Year and TotalNumber, which shows how many posts were created in each year.
+
+```{r resulting_table_task1}
+res_sqldf_1 <- sqldf_1(Posts)
+print(res_sqldf_1)
+```
+
+```{r equivalence_test_task1}
+res_base_1 <- base_1(Posts)
+res_data.table_1 <- data.table_1(Posts)
+res_dplyr_1 <- dplyr_1(Posts)
+
+comparison_dplyr <- compare(res_sqldf_1, res_dplyr_1)
+comparison_base <- compare(res_sqldf_1, res_base_1)
+comparison_data.table <- compare(res_sqldf_1, res_data.table_1)
+
+print("Comparing results with the result of sqldf")
+
+# Check if the resulting dplyr and sqldf objects are equivalent 
+if (comparison_dplyr$result) {
+  print("Result of dplyr is equivalent.")
+} else {
+  print("Result of dplyr is not equivalent.")
+}
+
+# Check if the resulting data.table and sqldf objects are equivalent 
+if(comparison_data.table$result){
+  print("Result of data.table is equivalent.")
+} else {
+  print("Result of data.table is not equivalent.")
+}
+
+# Check if the resulting base and sqldf objects are equivalent 
+if(comparison_base$result){
+  print("Result of base is equivalent.")
+} else {
+  print("Result of base is not equivalent.")
+}
+```
+
+The reason for base is not equivalent is although the values are exactly the same in the table year value is type of fctr but in sqldf it is chr. However, I could not fix it. The result of base can be seen below.
+
+```{r result_of_base_1}
+print(res_base_1)
+```
+
+```{r execution_times_task1}
+microbenchmark::microbenchmark(
+sqldf=sqldf_1,
+base=base_1,
+dplyr=dplyr_1,
+data.table=data.table_1
+)
+```
+
+We can see in the "mean" column that how many nanoseconds the execution of the function takes on the average and we see that the fastest one is data.table and the slowest one is sqldf. However, the results are close. When we look at the max values of these two we can see sqldf is completed in twice the time it took for data.table.
+
+#### Task 2
+
+In this task the query gives a table of three columns named: Id, DisplayName and TotalViews, which displays the top 10 users with the highest total views on their questions.
+
+```{r resulting_table_task2}
+res_sqldf_2 <- sqldf_2(Users, Posts)
+print(res_sqldf_2)
+```
+
+```{r equivalence_test_task2}
+res_base_2 <- base_2(Users, Posts)
+res_data.table_2 <- data.table_2(Users, Posts)
+res_dplyr_2 <- dplyr_2(Users, Posts)
+
+comparison_dplyr <- compare(res_sqldf_2, res_dplyr_2)
+comparison_base <- compare(res_sqldf_2, res_base_2)
+comparison_data.table <- compare(res_sqldf_2, res_data.table_2)
+
+print("Comparing results with the result of sqldf")
+
+# Check if the resulting dplyr and sqldf objects are equivalent 
+if (comparison_dplyr$result) {
+  print("Result of dplyr is equivalent.")
+} else {
+  print("Result of dplyr is not equivalent.")
+}
+
+# Check if the resulting data.table and sqldf objects are equivalent 
+if(comparison_data.table$result){
+  print("Result of data.table is equivalent.")
+} else {
+  print("Result of data.table is not equivalent.")
+}
+
+# Check if the resulting base and sqldf objects are equivalent 
+if(comparison_base$result){
+  print("Result of base is equivalent.")
+} else {
+  print("Result of base is not equivalent.")
+}
+```
+
+```{r execution_times_task2}
+microbenchmark::microbenchmark(
+sqldf=sqldf_2,
+base=base_2,
+dplyr=dplyr_2,
+data.table=data.table_2
+)
+```
+
+We can see in the "mean" column that how many nanoseconds the execution of the function takes on the average and we see that the fastest one is base and the slowest one is again sqldf. This time results are a bit further. When we look at the max values of these two we can see sqldf is completed in more than twice the time it took for base.
+
+#### Task 3
+
+In this task, the result of the query is explained by breaking it down into its sub-parts:
+
+1.  The innermost subquery (**BadgesNames**) calculates the count of each badge name for each year
+
+2.  The next subquery (**BadgesYearly**) calculates the total count of badges for each year
+
+3.  The outermost subquery combines the results mentioned above by performing a JOIN operation based on the "Year" column. This combines the count of each badge name with the total count of badges for each year. It then calculates the maximum percentage of each badge name's count compared to the total badge count for each year and finally, groups the result by "Year" and displays the maximum percentage for each badge name in each year.
+
+In summary, this resulting tablr provides insights into which badge names were most common and significant within each year based on their relative counts.
+
+```{r resulting_table_task3}
+res_sqldf_3 <- sqldf_3(Badges)
+print(res_sqldf_3)
+```
+
+```{r equivalence_test_task3}
+res_data.table_3 <- data.table_3(Badges)
+res_dplyr_3 <- dplyr_3(Badges)
+res_base_3 <- base_3(Badges)
+
+comparison_dplyr <- compare(res_sqldf_3, res_dplyr_3)
+comparison_base <- compare(res_sqldf_3, res_base_3)
+comparison_data.table <- compare(res_sqldf_3, res_data.table_3)
+
+print("Comparing results with the result of sqldf")
+
+# Check if the resulting dplyr and sqldf objects are equivalent 
+if (comparison_dplyr$result) {
+  print("Result of dplyr is equivalent.")
+} else {
+  print("Result of dplyr is not equivalent.")
+}
+
+# Check if the resulting data.table and sqldf objects are equivalent 
+if(comparison_data.table$result){
+  print("Result of data.table is equivalent.")
+} else {
+  print("Result of data.table is not equivalent.")
+}
+
+# Check if the resulting base and sqldf objects are equivalent 
+if(comparison_base$result){
+  print("Result of base is equivalent.")
+} else {
+  print("Result of base is not equivalent.")
+}
+```
+
+```{r execution_times_task3}
+microbenchmark::microbenchmark(
+sqldf=sqldf_3,
+base=base_3,
+dplyr=dplyr_3,
+data.table=data.table_3
+)
+```
+
+We can see in the "mean" column that how many nanoseconds the execution of the function takes on the average and we see that the fastest one is dplyr and the slowest one is data.table. This time results are much further away. When we look at the max values of these two we can see data.table is completed in almost fifth the time it took for dplyr. This might be due to the implementation of the function in data.table, most probably it is not the most efficient way that can be done. In the implementation the exact representation of the query is implemented but there might be a short cut.
+
+#### Task 4
+
+In this task the query gives a table of columns named: Title, CommentCount, ViewCount, CommentsTotalScore, DisplayName, Reputation, Location.
+
+The subparts of the query is explained below:
+
+1.  It calculates the total score of all comments (**CommentsTotalScore**) for each question with PostTypeId = 1 using a subquery called **CmtTotScr**.
+
+2.  The subquery **CmtTotScr** calculates the total comment score (**SUM(Score)**) for each question from the **Comments** table.
+
+3.  The **Posts** table is joined with the **CmtTotScr** subquery based on the **PostId**.
+
+4.  The result from the previous step is further joined with the **Users** table based on the **OwnerUserId** to get additional user-related information (**DisplayName**, **Reputation**, **Location**).
+
+5.  The final result is ordered by **CommentsTotalScore** in descending order.
+
+The resulting table will contain information about the top 10 questions (with PostTypeId = 1) with the highest total comment scores along with relevant information about the questions and their authors.
+
+```{r resulting_table_task4}
+res_sqldf_4 <- sqldf_4(Comments, Posts, Users)
+print(res_sqldf_4)
+```
+
+```{r equivalence_test_task4}
+res_data.table_4 <- data.table_4(Comments, Posts, Users)
+res_dplyr_4 <- dplyr_4(Comments, Posts, Users)
+res_base_4 <- base_4(Comments, Posts, Users)
+
+comparison_dplyr <- compare(res_sqldf_4, res_dplyr_4)
+comparison_base <- compare(res_sqldf_4, res_base_4)
+comparison_data.table <- compare(res_sqldf_4, res_data.table_4)
+
+print("Comparing results with the result of sqldf")
+
+# Check if the resulting dplyr and sqldf objects are equivalent 
+if (comparison_dplyr$result) {
+  print("Result of dplyr is equivalent.")
+} else {
+  print("Result of dplyr is not equivalent.")
+}
+
+# Check if the resulting data.table and sqldf objects are equivalent 
+if(comparison_data.table$result){
+  print("Result of data.table is equivalent.")
+} else {
+  print("Result of data.table is not equivalent.")
+}
+
+# Check if the resulting base and sqldf objects are equivalent 
+if(comparison_base$result){
+  print("Result of base is equivalent.")
+} else {
+  print("Result of base is not equivalent.")
+}
+```
+
+```{r execution_times_task4}
+microbenchmark::microbenchmark(
+sqldf=sqldf_4,
+base=base_4,
+dplyr=dplyr_4,
+data.table=data.table_4
+)
+```
+
+We can see in the "mean" column that how many nanoseconds the execution of the function takes on the average and we see that the fastest one is dplyr and the slowest one is base. This time results are much further away. When we look at the max values of these two we can see base is completed in almost eigthth the time it took for dplyr.
+
+#### Task 5
+
+The query in this task performs the following steps:
+
+1.  The inner most query filters the **Votes** with having **VoteTypeId** values 3 or 4 or 12 and it selects **PostId, VoteDate** and **Total,** while it creates VoteDate column based on year value of **CreationDate,** (if it is 2022 the value is "after" if 2021, 2020 or 2019 value is "during" otherwise value is "before" and counts the votes as Total. It calls the resulting table as **VotesDates**
+
+2.  The outer query groups **VotesDates** by **PostId** and perform operation on **VoteDate** by checking if **VoteDate** is before then get value of total column otherwise get 0 then get the max value of all anda assign it to **BeforeCOVIDVotes,** and does the same thing for **DuringCOVIDVotes** and **AfterCOVIDVotes.** It also sums the **Total** values as **Votes.** At last this table is named as **VotesByAge**
+
+3.  The outermost query joins **Posts** with **VotesByAge** on **Id** = **PostId,** it filters the records with having a **Title** and **DuringCOVIDVotes** value greater than zero. The query orders the table by **DuringCOVIDVotes** and **Votes** descending and gets the top 20 records while selecting the **Title,** **Date** as formatted version of **CreationDate** and the columns of **VotesByAge.**
+
+In essence, the query aims to retrieve information about posts, their creation dates, and the number of votes during different time periods ("before", "during", "after" COVID) while considering certain vote types (3, 4, 12). The query then filters and sorts the results based on conditions related to "Title" and "DuringCOVIDVotes".
+
+```{r resulting_table_task5}
+res_sqldf_5 <- sqldf_5(Posts, Votes) 
+print(res_sqldf_5)
+```
+
+```{r equivalence_test_task5}
+res_data.table_5 <- data.table_5(Posts, Votes) 
+res_dplyr_5 <- dplyr_5(Posts, Votes) 
+res_base_5 <- base_5(Posts, Votes) 
+
+comparison_dplyr <- compare(res_sqldf_5, res_dplyr_5) 
+comparison_base <- compare(res_sqldf_5, res_base_5) 
+comparison_data.table <- compare(res_sqldf_5, res_data.table_5)  
+
+print("Comparing results with the result of sqldf")  
+# Check if the resulting dplyr and sqldf objects are equivalent  
+if (comparison_dplyr$result) {   
+  print("Result of dplyr is equivalent.") 
+} else {   
+    print("Result of dplyr is not equivalent.") 
+}  
+
+# Check if the resulting data.table and sqldf objects are equivalent  
+if(comparison_data.table$result){   
+  print("Result of data.table is equivalent.") 
+} else {   
+  print("Result of data.table is not equivalent.") 
+}  
+
+# Check if the resulting base and sqldf objects are equivalent  
+if(comparison_base$result){   
+  print("Result of base is equivalent.") 
+} else {   
+  print("Result of base is not equivalent.") 
+}
+```
+
+The reason it is not equal with the result of dplyr and base is that, everything is correct but the coded convert the types of columns, BeforeCOVIDVotes, DuringCOVIDVotes and AfterCOVIDVotes, from integer to double. although I used as.integer function to convert them it did not work. Hence, it is left as it is. The results can be seen below.
+
+```{r result_of_base_5}
+print(res_base_5)
+```
+
+```{r result_of_dplyr_5}
+print(res_dplyr_5)
+```
+
+The reason why it is stated that the data.table result is not equivalent could not found. Below the result of data.table can be seen.
+
+```{r result_of_data.table_5}
+print(res_data.table_5)
+```
+
+```{r execution_times_task5}
+microbenchmark::microbenchmark( 
+  sqldf=sqldf_5, 
+  base=base_5, 
+  dplyr=dplyr_5, 
+  data.table=data.table_5 )
+```
+
+We can see in the "mean" column that how many nanoseconds the execution of the function takes on the average and we see that the fastest one is base and the slowest one is sqldf. This time results are closer. When we look at the max values of these two we can see sqldf is completed in almost twice the time it took for base.
